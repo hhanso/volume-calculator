@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Training Volume Calculator</title>
+  <style>
+    :root{
+      --bg:#0b0d11;--panel:#12151b;--muted:#8b95a7;--text:#e7edf5;--accent:#5bbcff;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--border:#1f2430;--chip:#1a2233;
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background:linear-gradient(180deg,#0b0d11,#0b0d11 60%,#0e1117); color:var(--text)}
+    .container{max-width:1100px;margin:32px auto;padding:0 16px}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:20px}
+    .title{font-weight:700;font-size:clamp(20px,3vw,28px)}
+    .tabs{display:flex;gap:8px;background:var(--panel);padding:6px;border-radius:999px;border:1px solid var(--border)}
+    .tab{padding:10px 14px;border-radius:999px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
+    .tab.active{background:var(--chip);color:var(--text);box-shadow:0 0 0 1px #223048 inset}
+
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+    .grid{display:grid;gap:16px}
+    .grid.two{grid-template-columns: 1.2fr 1fr}
+    @media (max-width:900px){.grid.two{grid-template-columns:1fr}}
+
+    label{font-size:12px;color:var(--muted);display:block;margin:4px 0}
+    select,input{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--border);background:#0f131a;color:var(--text)}
+    input[type=number]{-moz-appearance:textfield}
+    input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+    .row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px}
+    .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:#17202c;color:var(--text);cursor:pointer;font-weight:600}
+    .btn.primary{background:var(--accent);border-color:#3aa8f2;color:#051018}
+    .btn.ghost{background:transparent}
+    .btn.danger{background:#2a1113;border-color:#4a1b1e;color:#ffb4b4}
+
+    .list{margin-top:8px;border-top:1px dashed var(--border)}
+    .item{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px dashed var(--border)}
+    .chip{display:inline-flex;align-items:center;gap:8px;background:var(--chip);border:1px solid #223048;padding:6px 10px;border-radius:999px;font-size:12px;color:#b6c4da}
+
+    .muted{color:var(--muted)}
+    .stat{font-size:28px;font-weight:800}
+    .stat.bad{color:var(--bad)}
+    .stat.ok{color:var(--ok)}
+    .stat.warn{color:var(--warn)}
+
+    .hstack{display:flex;gap:8px;align-items:center}
+    .spacer{flex:1}
+    .hint{font-size:12px;color:var(--muted)}
+
+    .table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .table th{font-size:12px;color:var(--muted);font-weight:700;text-align:left;padding:0 10px}
+    .table td{background:#0f131a;border:1px solid var(--border);padding:10px;border-left-width:1px}
+    .table tr td:first-child{border-radius:12px 0 0 12px}
+    .table tr td:last-child{border-radius:0 12px 12px 0}
+
+    .bar{height:10px;border-radius:999px;background:#1f2937;position:relative;overflow:hidden}
+    .bar > span{position:absolute;inset:0 0 0 0;width:0;display:block;background:linear-gradient(90deg,var(--ok),#5bd6a5)}
+    .range{height:10px;border-radius:999px;background:transparent;outline:2px dashed #27472f;opacity:.7}
+
+    .footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="hstack">
+        <div class="title">🏋️ Training Volume Calculator</div>
+        <!-- <span class="chip">Vanilla JS</span> -->
+      </div>
+      <nav class="tabs" role="tablist">
+        <div class="tab active" data-tab="daily" role="tab" aria-selected="true">Daily</div>
+        <div class="tab" data-tab="weekly" role="tab" aria-selected="false">Weekly</div>
+      </nav>
+    </header>
+
+    <!-- Daily View -->
+    <section id="daily-view" class="grid two" role="tabpanel" aria-labelledby="daily" tabindex="0">
+      <div class="card">
+        <div class="row" style="margin-bottom:10px">
+          <div>
+            <label>Day</label>
+            <select id="daySelect"></select>
+          </div>
+          <div>
+            <label>Muscle Group</label>
+            <select id="muscleSelect"></select>
+          </div>
+          <div>
+            <label>Sets</label>
+            <input id="setsInput" type="number" min="1" max="50" placeholder="e.g., 4" />
+          </div>
+          <div style="align-self:end">
+            <button id="addBtn" class="btn primary" title="Add entry">Add</button>
+          </div>
+        </div>
+        <div class="hstack" style="margin:8px 0 4px">
+          <div class="chip" id="sessionTotalChip">Session total: <strong id="sessionTotal" style="margin-left:6px">0</strong> sets</div>
+          <div class="chip" id="balanceChip">Balance vs avg: <strong id="balanceDelta">0</strong></div>
+          <span class="spacer"></span>
+          <button class="btn ghost" id="duplicatePrev">↪︎ Duplicate previous day</button>
+        </div>
+        <div class="list" id="dayList"></div>
+        <div class="footer">
+          <button class="btn danger" id="clearDay">Clear Day</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hstack" style="margin-bottom:8px">
+          <div>
+            <div class="muted" style="font-size:12px">This Week's Average Sets/Session</div>
+            <div class="stat" id="avgPerSession">0</div>
+          </div>
+          <span class="spacer"></span>
+          <div>
+            <div class="muted" style="font-size:12px">Min → Max Session Total</div>
+            <div class="hstack stat" style="gap:16px"><span id="minSession">0</span><span class="muted">→</span><span id="maxSession">0</span></div>
+          </div>
+        </div>
+        <div>
+          <table class="table" id="sessionsTable" aria-label="Session totals per day">
+            <thead>
+              <tr>
+                <th>Day</th>
+                <th>Total Sets</th>
+                <th>Entries</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="footer">
+          <button class="btn" id="resetWeek">Reset Week</button>
+          <button class="btn ghost" id="exportBtn">Export JSON</button>
+          <button class="btn ghost" id="importBtn">Import JSON</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Weekly View -->
+    <section id="weekly-view" class="grid" style="display:none" role="tabpanel" aria-labelledby="weekly" tabindex="0">
+      <div class="card">
+        <div class="hstack" style="margin-bottom:8px">
+          <div>
+            <div class="muted" style="font-size:12px">Weekly Sets by Muscle</div>
+            <div class="hint">Green = within 10–20 sets</div>
+          </div>
+          <span class="spacer"></span>
+          <div class="chip">Total Weekly Sets: <strong id="grandTotal" style="margin-left:6px">0</strong></div>
+        </div>
+        <table class="table" id="weeklyTable" aria-label="Weekly sets per muscle">
+          <thead>
+            <tr>
+              <th>Muscle</th>
+              <th>Sets</th>
+              <th>10–20 Range</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ---------- Data Model ----------
+    const MUSCLES = [
+      "Chest","Back","Biceps","Triceps","Delts","Hamstrings","Quads","Calves"
+    ];
+    const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+    const STORAGE_KEY = "trainingVolume.v1";
+
+    function loadState(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw){
+        const init = { days: Object.fromEntries(DAYS.map(d => [d, []])) };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(init));
+        return init;
+      }
+      try{ return JSON.parse(raw); }catch{ return { days: Object.fromEntries(DAYS.map(d => [d, []])) }; }
+    }
+    function saveState(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+    let state = loadState();
+
+    // ---------- DOM Refs ----------
+    const daySelect = document.getElementById('daySelect');
+    const muscleSelect = document.getElementById('muscleSelect');
+    const setsInput = document.getElementById('setsInput');
+    const addBtn = document.getElementById('addBtn');
+    const dayList = document.getElementById('dayList');
+
+    const sessionTotalEl = document.getElementById('sessionTotal');
+    const sessionTotalChip = document.getElementById('sessionTotalChip');
+    const balanceChip = document.getElementById('balanceChip');
+    const balanceDelta = document.getElementById('balanceDelta');
+
+    const avgPerSession = document.getElementById('avgPerSession');
+    const minSession = document.getElementById('minSession');
+    const maxSession = document.getElementById('maxSession');
+    const sessionsTableBody = document.querySelector('#sessionsTable tbody');
+
+    const weeklyTableBody = document.querySelector('#weeklyTable tbody');
+    const grandTotalEl = document.getElementById('grandTotal');
+
+    const clearDayBtn = document.getElementById('clearDay');
+    const duplicatePrevBtn = document.getElementById('duplicatePrev');
+    const resetWeekBtn = document.getElementById('resetWeek');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+
+    // ---------- Init Selects ----------
+    function populateSelect(el, items){
+      el.innerHTML = items.map(v => `<option value="${v}">${v}</option>`).join('');
+    }
+    populateSelect(daySelect, DAYS);
+    populateSelect(muscleSelect, MUSCLES);
+
+    // ---------- Helpers ----------
+    const sum = (arr, fn = x => x) => arr.reduce((a,b)=>a+fn(b),0);
+
+    function getSessionTotal(day){
+      return sum(state.days[day] || [], e => Number(e.sets) || 0);
+    }
+    function sessionsStats(){
+      const totals = DAYS.map(d => getSessionTotal(d));
+      const nonZero = totals.filter(t => t>0);
+      const avg = nonZero.length ? Math.round((sum(nonZero)/nonZero.length)*10)/10 : 0;
+      const min = nonZero.length ? Math.min(...nonZero) : 0;
+      const max = nonZero.length ? Math.max(...nonZero) : 0;
+      return {totals, avg, min, max};
+    }
+    function weeklyByMuscle(){
+      const totals = Object.fromEntries(MUSCLES.map(m=>[m,0]));
+      for(const d of DAYS){
+        for(const e of state.days[d]){
+          if(totals[e.muscle] != null){ totals[e.muscle] += Number(e.sets)||0; }
+        }
+      }
+      return totals;
+    }
+
+    // ---------- Renderers ----------
+    function renderDayList(day){
+      const entries = state.days[day];
+      dayList.innerHTML = entries.map((e,i)=>`
+        <div class="item">
+          <div class="muted">${day}</div>
+          <div>${e.muscle}</div>
+          <div><strong>${e.sets}</strong> sets</div>
+          <div class="hstack" style="justify-content:flex-end">
+            <button class="btn ghost" data-act="dec" data-idx="${i}">-1</button>
+            <button class="btn ghost" data-act="inc" data-idx="${i}">+1</button>
+            <button class="btn danger" data-act="del" data-idx="${i}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderSessionSummary(){
+      const {totals, avg, min, max} = sessionsStats();
+      avgPerSession.textContent = avg;
+      minSession.textContent = min;
+      maxSession.textContent = max;
+
+      // Table rows
+      sessionsTableBody.innerHTML = DAYS.map((d,idx)=>{
+        const t = totals[idx];
+        const cls = t===0? 'muted' : (Math.abs(t-avg) <= 3 ? 'ok' : (Math.abs(t-avg)<=5 ? 'warn' : 'bad'));
+        const entries = state.days[d].map(e=>`${e.muscle} (${e.sets})`).join(', ');
+        return `<tr>
+          <td>${d}</td>
+          <td class="stat ${cls}">${t}</td>
+          <td>${entries || '<span class="muted">—</span>'}</td>
+        </tr>`;
+      }).join('');
+
+      // Current day chips
+      const day = daySelect.value;
+      const total = getSessionTotal(day);
+      sessionTotalEl.textContent = total;
+
+      const delta = avg>0 ? Math.round((total-avg)*10)/10 : 0;
+      balanceDelta.textContent = delta>0? `+${delta}` : `${delta}`;
+      const severity = avg===0? '': (Math.abs(delta)<=3? 'ok' : (Math.abs(delta)<=5? 'warn' : 'bad'));
+      sessionTotalChip.classList.remove('ok','warn','bad');
+      balanceChip.classList.remove('ok','warn','bad');
+      if(severity){ sessionTotalChip.classList.add(severity); balanceChip.classList.add(severity); }
+    }
+
+    function renderWeekly(){
+      const totals = weeklyByMuscle();
+      const rows = [];
+      let grand = 0;
+      for(const m of MUSCLES){
+        const v = totals[m];
+        grand += v;
+        const within = v>=10 && v<=20;
+        const near = (v>=8 && v<10) || (v>20 && v<=22);
+        const cls = within? 'ok' : (near? 'warn' : 'bad');
+        const pct = Math.min(100, Math.round((v/20)*100));
+        rows.push(`<tr>
+          <td>${m}</td>
+          <td>
+            <div class="bar"><span style="width:${pct}%"></span></div>
+            <div class="hint" style="margin-top:6px"><strong class="stat ${cls}" style="font-size:18px">${v}</strong> sets</div>
+          </td>
+          <td>
+            <div class="range" title="Target 10–20 sets" style="width:100%"></div>
+          </td>
+        </tr>`);
+      }
+      weeklyTableBody.innerHTML = rows.join('');
+      grandTotalEl.textContent = grand;
+    }
+
+    function renderAll(){
+      renderDayList(daySelect.value);
+      renderSessionSummary();
+      renderWeekly();
+    }
+
+    // ---------- Actions ----------
+    addBtn.addEventListener('click', ()=>{
+      const day = daySelect.value;
+      const muscle = muscleSelect.value;
+      const sets = Number(setsInput.value);
+      if(!sets || sets < 1){
+        alert('Please enter a valid number of sets (≥1).');
+        return;
+      }
+      state.days[day].push({muscle, sets});
+      saveState(state);
+      setsInput.value='';
+      renderAll();
+    });
+
+    dayList.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      const idx = Number(btn.dataset.idx);
+      const act = btn.dataset.act;
+      const day = daySelect.value;
+      const entry = state.days[day][idx];
+      if(!entry) return;
+      if(act==='del'){ state.days[day].splice(idx,1); }
+      if(act==='inc'){ entry.sets = Math.min(50, Number(entry.sets)+1); }
+      if(act==='dec'){ entry.sets = Math.max(1, Number(entry.sets)-1); }
+      saveState(state);
+      renderAll();
+    });
+
+    daySelect.addEventListener('change', ()=>{ renderAll(); });
+
+    clearDayBtn.addEventListener('click', ()=>{
+      const day = daySelect.value;
+      if(confirm(`Clear all entries for ${day}?`)){
+        state.days[day] = [];
+        saveState(state);
+        renderAll();
+      }
+    });
+
+    duplicatePrevBtn.addEventListener('click', ()=>{
+      const idx = DAYS.indexOf(daySelect.value);
+      const prevIdx = (idx - 1 + DAYS.length) % DAYS.length;
+      const prevDay = DAYS[prevIdx];
+      if(!state.days[prevDay].length){ alert('Previous day has no entries to duplicate.'); return; }
+      state.days[daySelect.value] = JSON.parse(JSON.stringify(state.days[prevDay]));
+      saveState(state);
+      renderAll();
+    });
+
+    resetWeekBtn.addEventListener('click', ()=>{
+      if(!confirm('Reset the entire week? This clears all entries.')) return;
+      state = { days: Object.fromEntries(DAYS.map(d => [d, []])) };
+      saveState(state);
+      renderAll();
+    });
+
+    exportBtn.addEventListener('click', ()=>{
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+      const a = document.createElement('a');
+      a.href = dataStr; a.download = 'training-volume.json'; a.click();
+    });
+
+    importBtn.addEventListener('click', ()=>{
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = '.json,application/json';
+      input.onchange = (ev)=>{
+        const file = ev.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = ()=>{
+          try{
+            const obj = JSON.parse(reader.result);
+            if(!obj.days) throw new Error('Invalid format');
+            // Normalize
+            for(const d of DAYS){ if(!Array.isArray(obj.days[d])) obj.days[d] = []; }
+            state = obj; saveState(state); renderAll();
+          }catch(err){ alert('Failed to import: ' + err.message); }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    });
+
+    // ---------- Tabs ----------
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', ()=>{
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        const view = tab.dataset.tab;
+        document.getElementById('daily-view').style.display = (view==='daily')? 'grid':'none';
+        document.getElementById('weekly-view').style.display = (view==='weekly')? 'grid':'none';
+      })
+    });
+
+    // ---------- First Render ----------
+    renderAll();
+  </script>
+</body>
+</html>
