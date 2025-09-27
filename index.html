@@ -53,6 +53,8 @@
     .table td{background:#0f131a;border:1px solid var(--border);padding:10px;border-left-width:1px}
     .table tr td:first-child{border-radius:12px 0 0 12px}
     .table tr td:last-child{border-radius:0 12px 12px 0}
+    .table tr.current td{background:#1a2233;border-color:#223048}
+    .table tr:hover td{background:#151b25}
 
     .bar{height:10px;border-radius:999px;background:#1f2937;position:relative;overflow:hidden}
     .bar > span{position:absolute;inset:0 0 0 0;width:0;display:block;background:linear-gradient(90deg,var(--ok),#5bd6a5)}
@@ -267,7 +269,8 @@
         const t = totals[idx];
         const cls = t===0? 'muted' : (Math.abs(t-avg) <= 3 ? 'ok' : (Math.abs(t-avg)<=5 ? 'warn' : 'bad'));
         const entries = state.days[d].map(e=>`${e.muscle} (${e.sets})`).join(', ');
-        return `<tr>
+        const isCurrentDay = d === daySelect.value;
+        return `<tr data-day="${d}" class="${isCurrentDay ? 'current' : ''}" style="cursor:pointer">
           <td>${d}</td>
           <td class="stat ${cls}">${t}</td>
           <td>${entries || '<span class="muted">—</span>'}</td>
@@ -317,6 +320,17 @@
     }
 
     // ---------- Actions ----------
+    // Handle clicking on session table rows
+    sessionsTableBody.addEventListener('click', (e) => {
+      const row = e.target.closest('tr');
+      if (!row) return;
+      const day = row.dataset.day;
+      if (!day) return;
+      
+      daySelect.value = day;
+      renderAll();
+    });
+
     addBtn.addEventListener('click', ()=>{
       const day = daySelect.value;
       const muscle = muscleSelect.value;
